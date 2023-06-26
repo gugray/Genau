@@ -1,5 +1,6 @@
 import {toJson} from "really-relaxed-json";
 import {Editor} from "./editor.js";
+import {EuclideanSequencer} from "./sequencer.js";
 import * as H from "./history.js";
 import * as Tone from "tone";
 
@@ -9,33 +10,49 @@ let players;
 let synth;
 let editor;
 let compo;
-let notePos = 0;
+let seq0, seq1, seq2, seq3;
+let stepIx = 0;
 let muted = false;
 
 const innerMute = "<u>M</u>ute";
 const innerUnmute = "Un<u>m</u>ute";
 
 const sampleParams = [
-  {name: "kick", "midi": 36, "path": "sounds/kick.mp3"},
-  {name: "snare", "midi": 37, "path": "sounds/snare2.mp3"},
-  {name: "rim", "midi": 38, "path": "sounds/rim.mp3"},
-  {name: "closedhat", "midi": 39, "path": "sounds/closedhat.mp3"},
-  {name: "openhat", "midi": 40, "path": "sounds/openhat.mp3"},
-  {name: "shaker", "midi": 41, "path": "sounds/shaker1.mp3"},
-  {name: "floor", "midi": 42, "path": "sounds/floor.mp3"},
-  {name: "tom", "midi": 43, "path": "sounds/tom.mp3"},
-  {name: "tamb", "midi": 44, "path": "sounds/tamb.mp3"},
-  {name: "cowbell", "midi": 45, "path": "sounds/cowbell2.mp3"},
-  {name: "ridebell", "midi": 46, "path": "sounds/ridebell.mp3"},
-  {name: "ridecymbal", "midi": 47, "path": "sounds/ridecymbal2.mp3"},
-  {name: "crash", "midi": 48, "path": "sounds/crash1.mp3"},
+  {name: "s-kick", "midi": 36, "path": "sounds/kick.mp3"},
+  {name: "s-snare", "midi": 37, "path": "sounds/snare2.mp3"},
+  {name: "s-rim", "midi": 38, "path": "sounds/rim.mp3"},
+  {name: "s-closedhat", "midi": 39, "path": "sounds/closedhat.mp3"},
+  {name: "s-openhat", "midi": 40, "path": "sounds/openhat.mp3"},
+  {name: "s-shaker", "midi": 41, "path": "sounds/shaker1.mp3"},
+  {name: "s-floor", "midi": 42, "path": "sounds/floor.mp3"},
+  {name: "s-tom", "midi": 43, "path": "sounds/tom.mp3"},
+  {name: "s-tamb", "midi": 44, "path": "sounds/tamb.mp3"},
+  {name: "s-cowbell", "midi": 45, "path": "sounds/cowbell2.mp3"},
+  {name: "s-ridebell", "midi": 46, "path": "sounds/ridebell.mp3"},
+  {name: "s-ridecymbal", "midi": 47, "path": "sounds/ridecymbal2.mp3"},
+  {name: "s-crash", "midi": 48, "path": "sounds/crash1.mp3"},
 ];
 
-const defaultSource = `{
+const defaultSource = `
+// C  C#  D  Eb  E  F  F#  G  Ab  A  Bb  B
+// C minor penta:    C  Eb F  G  Bb
+// C harmonic minor: C  D  Eb F  G  Ab B
+// C blues:          C  Eb F  F# G  Bb
+// C arabic:         C  C# E  F  G  Ab B
+// C hungarian roma: C  D  Eb F# G  Ab B
+
+// s-kick, s-snare, s-rim, s-closedhat, s-openhat, s-shaker, s-floor,
+// s-tom, s-tamb, s-cowbell, s-ridebell, s-ridecymbal, s-crash
+
+{
   tempo: 120,
   steps: 16,
-  seq1: { pulses: 3, offset: 0 },
-}`
+  chord: ["C4", "E4b", "F4", "F4#", "G4", "B4b"],
+  seq0: { pulses: 4, offset: 0, note: "s-kick" },
+  seq1: { pulses: 3, offset: 1, note: "A4b" },
+  seq2: { pulses: 7, offset: 3, note: "F4b" },
+}
+`;
 
 document.addEventListener("DOMContentLoaded", async () => {
 
@@ -50,6 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!toneStarted) {
       toneStarted = true;
       await initAudio();
+      await updateGenerator();
     }
     else toggleMute();
   });
@@ -70,11 +88,11 @@ function initEditor() {
   editor = new Editor(elmEditorBox, source);
   compo = JSON.parse(toJson(source));
 
-  editor.onSubmit = () => {
+  editor.onSubmit = async () => {
     const compoSource = editor.cm.doc.getValue();
     compo = JSON.parse(toJson(compoSource));
     H.storeVersion(compoSource);
-    Tone.Transport.bpm.value = compo.tempo;
+    if (toneStarted) await updateGenerator();
   };
   //editor.onFullScreen = () => document.documentElement.requestFullscreen();
 
@@ -103,6 +121,19 @@ function initEditor() {
 function toggleMute() {
   muted = !muted;
   elmControl.innerHTML = muted ? innerUnmute : innerMute;
+}
+
+async function updateGenerator() {
+  Tone.Transport.bpm.value = compo.tempo;
+  if (!compo.seq0) seq0 = null;
+  else seq0 = new EuclideanSequencer(compo.steps, compo.seq0.pulses, compo.seq0.offset);
+  if (!compo.seq1) seq1 = null;
+  else seq1 = new EuclideanSequencer(compo.steps, compo.seq1.pulses, compo.seq1.offset);
+  if (!compo.seq2) seq2 = null;
+  else seq2 = new EuclideanSequencer(compo.steps, compo.seq2.pulses, compo.seq2.offset);
+  if (!compo.seq3) seq3 = null;
+  else seq3 = new EuclideanSequencer(compo.steps, compo.seq3.pulses, compo.seq3.offset);
+
 }
 
 async function initAudio() {
@@ -144,7 +175,6 @@ async function initAudio() {
   effect.connect(reverb);
   reverb.toDestination();
 
-
   Tone.Transport.bpm.value = 120;
   Tone.Transport.scheduleRepeat(time => onStep(time), "8n");
   Tone.Transport.start();
@@ -153,14 +183,36 @@ async function initAudio() {
 function onStep(time) {
 
   const tones = [];
-  if ((notePos % 2) == 0) tones.push("A3");
-  if (notePos == 0) tones.push("D4");
+  const samples = [];
+
+  const addSeqNote = (seqIx) => {
+
+    let seq, noteDef;
+    if (seqIx == 0 && seq0) [seq, noteDef] = [seq0, compo.seq0.note];
+    else if (seqIx == 1 && seq1) [seq, noteDef] = [seq1, compo.seq1.note];
+    else if (seqIx == 2 && seq2) [seq, noteDef] = [seq2, compo.seq2.note];
+    else if (seqIx == 3 && seq3) [seq, noteDef] = [seq3, compo.seq3.note];
+    if (!seq || !seq.isPulse(stepIx)) return;
+
+    if (noteDef == "chord-seq") tones.push(compo.chord[stepIx % compo.chord.length]);
+    else if (noteDef.startsWith("s-") && samples.indexOf(noteDef) == -1) samples.push(noteDef);
+    else tones.push(noteDef);
+  }
+
+  addSeqNote(0);
+  addSeqNote(1);
+  addSeqNote(2);
+  addSeqNote(3);
 
   if (!muted) {
     synth.triggerAttackRelease(tones, "16n", time, 2);
+    for (const s of samples) {
+      if (!players.has(s)) continue;
+      players.player(s).start(time);
+    }
   }
 
-  notePos = (notePos + 1) % compo.steps;
+  stepIx += 1;
 }
 
 function loadSamples(params) {
