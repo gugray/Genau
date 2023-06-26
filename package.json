@@ -1,0 +1,24 @@
+{
+  "name": "isokuban",
+  "version": "0.0.1",
+  "description": "Isometric Sokoban on a cube world",
+  "license": "MIT",
+  "author": {
+    "name": "Gábor L Ugray",
+    "email": "gabor.reads.this@gmail.com"
+  },
+  "dependencies": {
+    "codemirror": "^5.65.13",
+    "jszip": "^3.10.1",
+    "lil-gui": "^0.18.1",
+    "really-relaxed-json": "^0.3.2",
+    "tone": "^14.7.77"
+  },
+  "devDependencies": {
+    "esbuild": "^0.14.21",
+    "esbuild-plugin-less": "^1.2.0",
+    "livereload": "^0.9.3",
+    "md5": "^2.3.0",
+    "static-server": "^2.2.1"
+  }
+}

@@ -1,0 +1,34 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+  background-color: #282828;
+}
+body { }
+footer {
+  position: fixed; bottom: 0; width: 100%; z-index: 1; padding: 10px; margin: 0;
+  font-family: sans-serif; color: #ccc; background-color: #20202080;
+}
+footer div { float: right; color: #808080; margin-left: 10px; }
+footer a { float: right; margin-left: 10px; color: hsl(240, 57%, 62%); text-decoration: none; }
+
+#editorBox {
+  display: none; position: fixed; top: 32px; left: 32px;
+  background-color: transparent; opacity: 0.3;
+  width: 600px; height: calc(100% - 64px);
+  &.focused { opacity: 1; }
+  &.focused #editorBg { opacity: 0.3; }
+  .CodeMirror { height: 100%; }
+  .CodeMirror, .CodeMirror-gutters { background-color: transparent; }
+  .CodeMirror-vscrollbar,
+  .CodeMirror-hscrollbar,
+  .CodeMirror-scrollbar-filler {
+    visibility: hidden;
+  }
+}
+#editorBg {
+  position: absolute; width: 100%; height: 100%;
+  background-color: black; opacity: 0;
+  transition: background-color ease-out 1.5s;
+  &.error { background-color: red; transition: none; }
+  &.apply { background-color: #aaa; transition: none; }
+}
